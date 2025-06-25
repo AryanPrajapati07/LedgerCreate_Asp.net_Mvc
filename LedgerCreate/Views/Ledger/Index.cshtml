@@ -1,0 +1,10 @@
+﻿@using (Html.BeginForm("Report", "Ledger", FormMethod.Post))
+{
+    <label>Ledger Name:</label>
+    <input type="text" name="ledgerName" required />
+    <label>From Date:</label>
+    <input type="date" name="fromDate" required />
+    <label>To Date:</label>
+    <input type="date" name="toDate" required />
+    <input type="submit" value="Generate Report" />
+}
