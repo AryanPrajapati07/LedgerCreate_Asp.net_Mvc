@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using DinkToPdf;
-using DinkToPdf.Contracts;
+using IronPdf;
 using LedgerCreate.Models;
 using LedgerCreate.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -8,17 +7,22 @@ using Microsoft.Data.SqlClient;
 using System.Configuration;
 using System.Data;
 
+using Newtonsoft.Json;
+
 namespace LedgerCreate.Controllers
 {
     public class LedgerController : Controller
     {
         private readonly ApplicationDbContext context;
         private readonly string connectionString;
+        private readonly IViewRenderService _viewRenderService;
 
-        public LedgerController(ApplicationDbContext context, IConfiguration configuration)
+
+        public LedgerController(ApplicationDbContext context, IConfiguration configuration, IViewRenderService viewRenderService)
         {
             this.context = context;
             connectionString = configuration.GetConnectionString("DefaultConnection");
+            _viewRenderService = viewRenderService;
         }
 
         public ActionResult Index()
@@ -36,9 +40,10 @@ namespace LedgerCreate.Controllers
         {
             List<LedgerReport> report = new List<LedgerReport>();
 
+
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand("sp_GetLedgerReport", conn);
+                SqlCommand cmd = new SqlCommand("sp_GetLedgerReports", conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@LedgerName", ledgerName);
                 cmd.Parameters.AddWithValue("@FromDate", fromDate);
@@ -60,40 +65,47 @@ namespace LedgerCreate.Controllers
                     });
                 }
             }
+            HttpContext.Session.SetString("ReportData", JsonConvert.SerializeObject(report));
 
-            return View("Report", report);
+            return View("Report", report); // ✅ Must pass the list to the view
         }
 
-        public IActionResult ExportToPdf()
+
+        [HttpPost]
+        public async Task<IActionResult> ExportToPdf(string ChartImage)
         {
-            var reportHtml = RenderViewToString("Report", TempData["ReportData"]);
-            var converter = new SynchronizedConverter(new PdfTools());
-            var doc = new HtmlToPdfDocument()
+            TempData.Keep("ReportData");
+
+            var reportJson = HttpContext.Session.GetString("ReportData");
+            if (string.IsNullOrEmpty(reportJson))
             {
-                GlobalSettings = {
-            PaperSize = PaperKind.A4
-        },
-                Objects = {
-            new ObjectSettings()
-            {
-                HtmlContent = (string)reportHtml
+                return BadRequest("No report data found.");
             }
-        }
+
+            var reportList = JsonConvert.DeserializeObject<List<LedgerReport>>(reportJson);
+
+            // ✅ Create a view model to hold both report data and chart image
+            var viewModel = new LedgerReportWithChartViewModel
+            {
+                Reports = reportList,
+                ChartImageBase64 = ChartImage
             };
-            var file = converter.Convert(doc);
-            return File(file, "application/pdf", "LedgerReport.pdf");
+
+            var reportHtml = await _viewRenderService.RenderToStringAsync(this,"ReportWithChart", viewModel);
+
+            var renderer = new IronPdf.HtmlToPdf();
+            var pdfDoc = renderer.RenderHtmlAsPdf(reportHtml);
+
+            return File(pdfDoc.BinaryData, "application/pdf", "LedgerReport.pdf");
         }
 
-        private object RenderViewToString(string v1, object? v2)
-        {
-            throw new NotImplementedException();
-        }
-    }
 
-    internal class PdfTools
-    {
-        public PdfTools()
+        public IActionResult ReportWithChartTest()
         {
+            return View("ReportWithChart");
         }
+
+
+
     }
 }
