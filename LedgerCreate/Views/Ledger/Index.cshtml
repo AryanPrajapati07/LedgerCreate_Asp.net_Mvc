@@ -1,10 +1,21 @@
 ﻿@using (Html.BeginForm("Report", "Ledger", FormMethod.Post))
 {
-    <label>Ledger Name:</label>
-    <input type="text" name="ledgerName" required />
-    <label>From Date:</label>
-    <input type="date" name="fromDate" required />
-    <label>To Date:</label>
-    <input type="date" name="toDate" required />
-    <input type="submit" value="Generate Report" />
+    <form method="post" asp-action="Report">
+        <select name="LedgerGroup" class="form-control">
+            <option value="">-- Select Group --</option>
+            <option value="Asset">Asset</option>
+            <option value="Expense">Expense</option>
+            <option value="Income">Income</option>
+            <option value="Liability">Liability</option>
+        </select>
+
+        <!-- Other filters -->
+        <input type="text" name="LedgerName" placeholder="Ledger Name" />
+        <input type="date" name="FromDate" />
+        <input type="date" name="ToDate" />
+
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
 }
+

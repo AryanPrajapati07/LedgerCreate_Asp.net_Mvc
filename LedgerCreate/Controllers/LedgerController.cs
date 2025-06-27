@@ -36,18 +36,19 @@ namespace LedgerCreate.Controllers
         }
 
         [HttpPost]
-        public ActionResult Report(string ledgerName, DateTime fromDate, DateTime toDate)
+        public ActionResult Report(string ledgerName, DateTime fromDate, DateTime toDate,string ledgerGroup)
         {
             List<LedgerReport> report = new List<LedgerReport>();
 
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand("sp_GetLedgerReports", conn);
+                SqlCommand cmd = new SqlCommand("sp_GetLedgerReported", conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@LedgerName", ledgerName);
                 cmd.Parameters.AddWithValue("@FromDate", fromDate);
                 cmd.Parameters.AddWithValue("@ToDate", toDate);
+                cmd.Parameters.AddWithValue("@LedgerGroup", string.IsNullOrEmpty(ledgerGroup)?(object)DBNull.Value:ledgerGroup);
 
                 conn.Open();
                 SqlDataReader reader = cmd.ExecuteReader();
