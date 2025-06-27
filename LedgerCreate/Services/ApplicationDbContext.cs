@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using LedgerCreate.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace LedgerCreate.Services
 {
@@ -8,7 +9,9 @@ namespace LedgerCreate.Services
             : base(options)
         {
         }
-        
+        public DbSet<LedgerReportAuditLog> LedgerReportAuditLogs { get; set; }
+
     }
-    
+
+
 }

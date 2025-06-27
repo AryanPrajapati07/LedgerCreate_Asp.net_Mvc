@@ -1,0 +1,42 @@
+﻿@model List<LedgerGroupSummary>
+
+@{
+    ViewData["Title"] = "Ledger Group Summary";
+}
+
+<h2 class="text-center">Ledger Group Summary</h2>
+
+<table class="table table-bordered mt-4">
+    <thead class="table-dark">
+        <tr>
+            <th>Ledger Group</th>
+            <th>Total Debit</th>
+            <th>Total Credit</th>
+            <th>Balance</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.LedgerGroup</td>
+                <td>₹@item.TotalDebit.ToString("N2")</td>
+                <td>₹@item.TotalCredit.ToString("N2")</td>
+                <td>₹@item.Balance.ToString("N2")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<b>Summary of Categories:</b>
+<li>Assets: Cash Account, Bank Account, deposits, refunds.</li>
+
+<li>
+    Income: Sales Account entries with revenue context.
+</li>
+
+<li>
+    Expense: Monthly bills, rent, tools, subscriptions, allowances.
+</li>
+<li>Liability: Loans, repayments, taxes.
+</li>

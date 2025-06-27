@@ -8,6 +8,8 @@
         public decimal DebitAmount { get; set; }
         public decimal CreditAmount { get; set; }
         public decimal Balance { get; set; }
+
+        public string LedgerName { get; set; }
     }
 
 }

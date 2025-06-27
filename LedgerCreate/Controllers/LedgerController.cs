@@ -43,7 +43,7 @@ namespace LedgerCreate.Controllers
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand("sp_GetLedgerReported", conn);
+                SqlCommand cmd = new SqlCommand("sp_GetLedgerReportings", conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@LedgerName", ledgerName);
                 cmd.Parameters.AddWithValue("@FromDate", fromDate);
@@ -62,7 +62,8 @@ namespace LedgerCreate.Controllers
                         VoucherNo = reader["VoucherNo"].ToString(),
                         DebitAmount = Convert.ToDecimal(reader["DebitAmount"]),
                         CreditAmount = Convert.ToDecimal(reader["CreditAmount"]),
-                        Balance = Convert.ToDecimal(reader["Balance"])
+                        Balance = Convert.ToDecimal(reader["Balance"]),
+                        LedgerName = reader["LedgerName"].ToString()
                     });
                 }
             }
@@ -80,10 +81,14 @@ namespace LedgerCreate.Controllers
             var reportJson = HttpContext.Session.GetString("ReportData");
             if (string.IsNullOrEmpty(reportJson))
             {
+                LogAudit(null, null, null, "Failed", null);
                 return BadRequest("No report data found.");
             }
 
             var reportList = JsonConvert.DeserializeObject<List<LedgerReport>>(reportJson);
+            string ledgerName = reportList.FirstOrDefault()?.LedgerName ?? "Unknown Ledger";
+            DateTime fromDate = reportList.Min(r => r.TransactionDate);
+            DateTime toDate = reportList.Max(r => r.TransactionDate);
 
             // ✅ Create a view model to hold both report data and chart image
             var viewModel = new LedgerReportWithChartViewModel
@@ -97,7 +102,10 @@ namespace LedgerCreate.Controllers
             var renderer = new IronPdf.HtmlToPdf();
             var pdfDoc = renderer.RenderHtmlAsPdf(reportHtml);
 
-            return File(pdfDoc.BinaryData, "application/pdf", "LedgerReport.pdf");
+            string fileName = $"LedgerReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+            LogAudit(ledgerName, fromDate, toDate, "Success", fileName);
+
+            return File(pdfDoc.BinaryData, "application/pdf", fileName);
         }
 
 
@@ -106,6 +114,55 @@ namespace LedgerCreate.Controllers
             return View("ReportWithChart");
         }
 
+        public IActionResult GroupSummary()
+        {
+            List<LedgerGroupSummary> summaryList = new List<LedgerGroupSummary>();
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                SqlCommand cmd = new SqlCommand("sp_LedgerSummaryByGroups", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                conn.Open();
+                SqlDataReader reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    summaryList.Add(new LedgerGroupSummary
+                    {
+                        LedgerGroup = reader["LedgerGroup"].ToString(),
+                        TotalDebit = Convert.ToDecimal(reader["TotalDebit"]),
+                        TotalCredit = Convert.ToDecimal(reader["TotalCredit"]),
+                        Balance = Convert.ToDecimal(reader["Balance"])
+                    });
+                }
+            }
+
+            return View(summaryList);
+        }
+
+        private void LogAudit(string ledgerName, DateTime? fromDate, DateTime? toDate, string status, string fileName)
+        {
+            var log = new LedgerReportAuditLog
+            {
+                LedgerName = ledgerName ?? "Unknown",
+                FromDate = fromDate ?? DateTime.MinValue,
+                ToDate = toDate ?? DateTime.MinValue,
+                Status = status,
+                FileName = fileName,
+                GeneratedAt = DateTime.Now,
+                UserName = User.Identity?.Name ?? "Anonymous",
+                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            };
+
+            context.LedgerReportAuditLogs.Add(log);
+            context.SaveChanges();
+        }
+        public IActionResult AuditLogs()
+        {
+            var logs = context.LedgerReportAuditLogs.OrderByDescending(l => l.GeneratedAt).ToList();
+            return View(logs);
+        }
 
 
     }

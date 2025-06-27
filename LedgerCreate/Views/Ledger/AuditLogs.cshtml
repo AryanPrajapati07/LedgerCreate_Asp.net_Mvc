@@ -1,0 +1,27 @@
+﻿<table class="table">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Ledger</th>
+            <th>Date Range</th>
+            <th>Status</th>
+            <th>File</th>
+            <th>IP</th>
+            <th>Generated At</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var log in Model)
+        {
+            <tr>
+                <td>@log.UserName</td>
+                <td>@log.LedgerName</td>
+                <td>@log.FromDate.ToShortDateString() - @log.ToDate.ToShortDateString()</td>
+                <td>@log.Status</td>
+                <td>@log.FileName</td>
+                <td>@log.IPAddress</td>
+                <td>@log.GeneratedAt.ToString("g")</td>
+            </tr>
+        }
+    </tbody>
+</table>
